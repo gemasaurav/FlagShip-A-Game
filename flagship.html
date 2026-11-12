@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>Flagship: A Game</title>
+<style>
+:root{--bg:#0a0e17;--card:#121a2b;--accent:#00d4ff;--text:#e8f0ff;--muted:#8b9bb8;--success:#22c55e;--danger:#ef4444}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+.screen{display:none;flex-direction:column;align-items:center;padding:1rem .8rem 4.5rem;width:100%;max-width:480px;margin:0 auto;flex:1}
+.screen.active{display:flex}
+h1{font-size:1.5rem;background:linear-gradient(90deg,#7dd3fc,#00d4ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center;margin-bottom:.4rem}
+h2{font-size:1.2rem;color:var(--accent);text-align:center;margin:.4rem 0 .6rem}
+.logo{width:min(90%,340px);max-height:120px;object-fit:contain;margin:.5rem 0;filter:drop-shadow(0 0 14px rgba(0,212,255,.35));display:block}
+.btn{background:linear-gradient(135deg,#0ea5e9,#0284c7);color:#fff;border:none;border-radius:14px;padding:.85rem 1.2rem;font-size:1.05rem;font-weight:600;cursor:pointer;width:100%;max-width:300px;margin:.35rem 0;transition:opacity .15s}
+.btn:active{opacity:.85}
+.btn.secondary{background:linear-gradient(135deg,#1e293b,#334155)}
+.btn.success{background:linear-gradient(135deg,#16a34a,#15803d)}
+.btn.ghost{background:transparent;border:1.5px solid rgba(0,212,255,.45);color:var(--accent)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.credits{position:fixed;bottom:0;left:0;right:0;text-align:center;font-size:.74rem;color:var(--muted);padding:.55rem;background:linear-gradient(transparent,rgba(10,14,23,.97));z-index:50}
+.score-bar{display:flex;justify-content:space-between;width:100%;max-width:360px;background:var(--card);border-radius:10px;padding:.5rem .9rem;margin-bottom:.6rem;font-size:.9rem;border:1px solid rgba(0,212,255,.2)}
+.score-bar strong{color:var(--accent)}
+.list{display:flex;flex-direction:column;gap:.5rem;width:100%;max-width:380px;max-height:55vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.card{background:#fff;background-image:radial-gradient(#cbd5e1 1.1px,transparent 1.1px);background-size:9px 9px;border:2px solid #94a3b8;border-radius:12px;padding:.55rem;cursor:pointer;display:flex;justify-content:center;align-items:center;min-height:72px;transition:border-color .15s,box-shadow .15s}
+.card.correct{border-color:#22c55e}.card.wrong{border-color:#ef4444;opacity:.5}
+.card.sel{border-color:#00d4ff;box-shadow:0 0 0 3px rgba(0,212,255,.6)}
+.info{text-align:center;color:var(--muted);font-size:.88rem;margin-bottom:.5rem;max-width:340px;line-height:1.4}
+.stage-label{background:rgba(0,212,255,.12);border:1px solid rgba(0,212,255,.3);border-radius:20px;padding:.25rem .8rem;font-size:.8rem;color:var(--accent);margin-bottom:.4rem}
+.msg{text-align:center;min-height:1.2rem;margin:.3rem 0;font-weight:500}
+.msg.success{color:var(--success)}.msg.error{color:var(--danger)}
+.preview{width:300px;max-width:100%;height:200px;background:#fff;background-image:radial-gradient(#cbd5e1 1.1px,transparent 1.1px);background-size:9px 9px;border:2px solid #94a3b8;border-radius:12px;position:relative;margin:.5rem auto;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:6px}
+.preview svg{width:100%;height:100%}
+.color-board{display:grid;grid-template-columns:repeat(5,1fr);gap:.4rem;width:100%;max-width:320px;margin:.6rem 0}
+.swatch{aspect-ratio:1;border-radius:10px;border:3px solid transparent;cursor:pointer;transition:transform .1s,border-color .1s}
+.swatch:hover,.swatch:active{transform:scale(1.08)}
+.swatch.sel{border-color:#00d4ff;box-shadow:0 0 0 2px rgba(0,212,255,.5)}
+.final-score{font-size:2.2rem;font-weight:700;color:var(--accent);margin:.4rem 0}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;align-items:center;justify-content:center;padding:1rem}
+.modal.active{display:flex}
+.modal-box{background:var(--card);border:1px solid rgba(0,212,255,.3);border-radius:16px;padding:1.2rem;max-width:360px;width:100%}
+.modal-box h3{color:var(--accent);text-align:center;margin-bottom:.6rem}
+.modal-box ol{padding-left:1.2rem;font-size:.9rem;line-height:1.5;color:var(--text)}
+.list{max-height:none;overflow:visible}
+.sticky{position:sticky;top:0;z-index:20;background:var(--bg);width:100%;display:flex;flex-direction:column;align-items:center;padding-bottom:.4rem}
+.sticky h2{margin:.2rem 0}.sticky .info{margin:0 0 .2rem;font-size:.78rem}.sticky .btn{margin:.2rem 0}
+.ograd{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;width:100%;max-width:440px;margin-top:.4rem}
+.card{min-height:0;padding:.35rem;border-radius:8px}
+.card svg{width:100%;height:68px;display:block}
+.ol{fill:none;stroke:#475569;stroke-width:1.2;stroke-dasharray:2.8 1.8}
+.rg{fill:transparent;stroke:#475569;stroke-width:1;stroke-dasharray:2.4 1.6;cursor:pointer;pointer-events:all;transition:fill .15s}
+.rg.active{stroke:#00d4ff;stroke-width:2;stroke-dasharray:none;fill:rgba(0,212,255,.2)}
+.rg.filled{stroke:rgba(15,23,42,.4);stroke-dasharray:none}
+.country-btn{background:var(--card);border:1px solid rgba(0,212,255,.25);border-radius:12px;padding:.85rem 1rem;font-size:1rem;color:var(--text);cursor:pointer;text-align:left;width:100%;transition:border-color .15s,background .15s}
+.country-btn:hover,.country-btn:active{border-color:var(--accent);background:#1a2438}
+</style>
+</head>
+<body>
+<div id="home" class="screen active">
+  <svg class="logo" viewBox="0 0 320 100" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#7dd3fc"/>
+        <stop offset="100%" stop-color="#00d4ff"/>
+      </linearGradient>
+    </defs>
+    <rect x="20" y="25" width="70" height="50" rx="4" fill="none" stroke="url(#g)" stroke-width="3"/>
+    <line x1="20" y1="41.67" x2="90" y2="41.67" stroke="url(#g)" stroke-width="2"/>
+    <line x1="20" y1="58.33" x2="90" y2="58.33" stroke="url(#g)" stroke-width="2"/>
+    <circle cx="130" cy="50" r="18" fill="none" stroke="url(#g)" stroke-width="3"/>
+    <text x="170" y="58" fill="url(#g)" font-family="system-ui,sans-serif" font-size="28" font-weight="700">Flagship</text>
+  </svg>
+  <h1>Flagship: A Game</h1>
+  <button class="btn" onclick="go('levels')">Start Game</button>
+  <button class="btn ghost" onclick="document.getElementById('rules').classList.add('active')">Rules of the game</button>
+</div>
+
+<div id="levels" class="screen">
+  <h1>Flagship: A Game</h1>
+  <h2>Select Level</h2>
+  <button class="btn" onclick="pickLevel(1)">Level 1 — Easy</button>
+  <button class="btn" onclick="pickLevel(2)">Level 2 — Medium</button>
+  <button class="btn" onclick="pickLevel(3)">Level 3 — Hard</button>
+  <button class="btn secondary" onclick="go('home')">Back</button>
+</div>
+
+<div id="countries" class="screen">
+  <h1>Flagship: A Game</h1>
+  <h2 id="lvTitle">Level 1</h2>
+  <p class="info">Choose a country</p>
+  <div class="score-bar"><span>Score: <strong id="sc1">0</strong></span><span id="lvLab">Easy</span></div>
+  <div id="cList" class="list"></div>
+  <button class="btn secondary" onclick="go('levels')" style="margin-top:.7rem">Back to Levels</button>
+</div>
+
+<div id="stage1" class="screen">
+  <div class="sticky">
+    <div class="stage-label">Stage 1 — Identify Flag Outline</div>
+    <h2 id="s1Name">Country</h2>
+    <div class="score-bar"><span>Score: <strong id="sc2">0</strong></span><span>Attempts left: <strong id="att1">5</strong></span></div>
+    <p class="info">Tap the flag outline that matches this country, then press Submit · 1st try = 5 pts … 5th try = 1 pt</p>
+    <div id="s1msg" class="msg"></div>
+    <button id="s1sub" class="btn" disabled onclick="submit1()">Submit</button>
+    <button id="s1next" class="btn success" style="display:none" onclick="goStage2()">Continue to Coloring →</button>
+  </div>
+  <div id="outlines" class="ograd"></div>
+</div>
+
+<div id="stage2" class="screen">
+  <div class="stage-label">Stage 2 — Color the Flag</div>
+  <h2 id="s2Name">Country</h2>
+  <div class="score-bar"><span>Score: <strong id="sc3">0</strong></span><span>Attempts left: <strong id="att2">5</strong></span></div>
+  <p class="info" id="s2inst">Tap a region, then choose its color from the palette below</p>
+  <div class="preview" id="preview"></div>
+  <div id="colors" class="color-board" style="display:none"></div>
+  <div id="s2msg" class="msg"></div>
+  <button id="s2check" class="btn" disabled onclick="checkColors()">Submit</button>
+  <button id="s2next" class="btn success" style="display:none" onclick="showResult()">See Result →</button>
+</div>
+
+<div id="result" class="screen">
+  <h1>Flagship: A Game</h1>
+  <h2 id="resTitle">Complete!</h2>
+  <p class="info" id="resDetail"></p>
+  <div class="final-score" id="resScore">0</div>
+  <p class="info">Total Score</p>
+  <button class="btn" onclick="again()">Play Another Country</button>
+  <button class="btn secondary" onclick="go('levels')">Change Level</button>
+  <button class="btn secondary" onclick="go('home')">Home</button>
+</div>
+
+<div id="gameover" class="screen">
+  <h1>Game Over</h1>
+  <p class="info" id="goMsg"></p>
+  <div class="final-score" id="goScore">0</div>
+  <button class="btn" onclick="again()">Try Another</button>
+  <button class="btn secondary" onclick="go('levels')">Change Level</button>
+  <button class="btn secondary" onclick="go('home')">Home</button>
+</div>
+
+<div id="rules" class="modal">
+  <div class="modal-box">
+    <h3>Rules of the Game</h3>
+    <ol>
+      <li>Choose a level (Easy / Medium / Hard).</li>
+      <li>Select a country from the list.</li>
+      <li><strong>Stage 1:</strong> Find the correct flag outline among the options. You have 5 attempts. Points: 5 on 1st try down to 1 on 5th try. Flags sharing the same geometric outline are accepted.</li>
+      <li><strong>Stage 2:</strong> Tap each region of the outline and choose the correct color from the palette. You have 5 attempts to get all colors right.</li>
+      <li>Single player. Score accumulates across stages.</li>
+    </ol>
+    <button class="btn" style="margin-top:1rem" onclick="document.getElementById('rules').classList.remove('active')">Got it</button>
+  </div>
+</div>
+<div class="credits">Designed and Developed by 100, 000 000 000</div>
+
+<script>
+/* ========== DATA ========== */
+const OUTLINES = {
+  solid: `<svg viewBox="0 0 90 60" xmlns="http://www.w3.org/2000/svg"><rect class="ol" x="5" y="5" width="80" height="50" rx="1"/></svg>`,
+  horiz2: `<svg viewBox="0 0 90 60" xmlns="http://www.w3.org/2000/svg"><rect class="ol" x="5" y="5" width="80" height="50" rx="1"/><line class="ol" x1="5" y1="30" x2="85" y2="30"/></svg>`,
+  horiz3: `<svg viewBox="0 0 90 60" xmlns="http://www.w3.org/2000/svg"><rect class="ol" x="5" y="5" width="80" height="50" rx="1"/><line class="ol" x1="5" y1="21.67" x2="85" y2="21.67"/><line class="ol" x1="5" y1="38.33" x2="85" y2="38.33"/></svg>`,
+  vert2: `<svg viewBox="0 0 90 60" xmlns="http://www.w3.org/2000/svg"><rect class="ol" x="5" y="5" width="80" height="50" rx="1"/><line class="ol" x1="45" y1="5" x2="45" y2="55"/></svg>`,
+  vert3: `<svg viewBox="0 0 90 60" xmlns="http://www.w3.org/2000/svg"><rect class="ol" x="5" y="5" width="80" height="50" rx="1"/><line class="ol" x1="31.67" y1="5" x2="31.67" y2="55"/><line class="ol" x1="58.33" y1="5" x2="58.33" y2="55"/></svg>`,
+  nordic: `<svg viewBox="0 0 90 60" xmlns="http://www.w3.org/2000/svg"><rect class="ol" x="5" y="5" width="80" height="50" rx="1"/><line class="ol" x1="32" y1="5" x2="32" y2="55"/><line class="ol" x1="5" y1="30" x2="85" y2="30"/></svg>`,
+  cross: `<svg viewBox="0 0 90 60" xmlns="http://www.w3.org/2000/svg"><rect class="ol" x="5" y="5" width="80" height="50" rx="1"/><line class="ol" x1="45" y1="5" x2="45" y2="55"/><line class="ol" x1="5" y1="30" x2="85" y2="30"/></svg>`,
+  circle: `<svg viewBox="0 0 90 60" xmlns="http://www.w3.org/2000/svg"><rect class="ol" x="5" y="5" width="80" height="50" rx="1"/><circle class="ol" cx="45" cy="30" r="14"/></svg>`
+};
+
+const COLORS = [
+  {hex:"#FFFFFF", name:"White"},
+  {hex:"#000000", name:"Black"},
+  {hex:"#C8102E", name:"Red"},
+  {hex:"#012169", name:"Navy"},
+  {hex:"#009639", name:"Green"},
+  {hex:"#FFD100", name:"Yellow"},
+  {hex:"#FF6200", name:"Orange"},
+  {hex:"#002395", name:"Blue"},
+  {hex:"#AE1C28", name:"Crimson"},
+  {hex:"#BC002D", name:"Japan Red"}
+];
+
+const FLAGS = [
+  /* ===== LEVEL 1 — Easy ===== */
+  {
+    name: "Japan",
+    level: 1,
+    outline: "circle",
+    regions: [
+      {d:"M5,5 H85 V55 H5 Z", color:"#FFFFFF"},
+      {d:"M45,30 m-14,0 a14,14 0 1,0 28,0 a14,14 0 1,0 -28,0", color:"#BC002D"}
+    ]
+  },
+  {
+    name: "France",
+    level: 1,
+    outline: "vert3",
+    regions: [
+      {d:"M5,5 H31.67 V55 H5 Z", color:"#002395"},
+      {d:"M31.67,5 H58.33 V55 H31.67 Z", color:"#FFFFFF"},
+      {d:"M58.33,5 H85 V55 H58.33 Z", color:"#ED2939"}
+    ]
+  },
+  {
+    name: "Italy",
+    level: 1,
+    outline: "vert3",
+    regions: [
+      {d:"M5,5 H31.67 V55 H5 Z", color:"#009246"},
+      {d:"M31.67,5 H58.33 V55 H31.67 Z", color:"#FFFFFF"},
+      {d:"M58.33,5 H85 V55 H58.33 Z", color:"#CE2B37"}
+    ]
+  },
+  {
+    name: "Germany",
+    level: 1,
+    outline: "horiz3",
+    regions: [
+      {d:"M5,5 H85 V21.67 H5 Z", color:"#000000"},
+      {d:"M5,21.67 H85 V38.33 H5 Z", color:"#DD0000"},
+      {d:"M5,38.33 H85 V55 H5 Z", color:"#FFCE00"}
+    ]
+  },
+  {
+    name: "Netherlands",
+    level: 1,
+    outline: "horiz3",
+    regions: [
+      {d:"M5,5 H85 V21.67 H5 Z", color:"#AE1C28"},
+      {d:"M5,21.67 H85 V38.33 H5 Z", color:"#FFFFFF"},
+      {d:"M5,38.33 H85 V55 H5 Z", color:"#21468B"}
+    ]
+  },
+  {
+    name: "Poland",
+    level: 1,
+    outline: "horiz2",
+    regions: [
+      {d:"M5,5 H85 V30 H5 Z", color:"#FFFFFF"},
+      {d:"M5,30 H85 V55 H5 Z", color:"#DC143C"}
+    ]
+  },
+
+  /* ===== LEVEL 2 — Medium ===== */
+  {
+    name: "Ukraine",
+    level: 2,
+    outline: "horiz2",
+    regions: [
+      {d:"M5,5 H85 V30 H5 Z", color:"#0057B7"},
+      {d:"M5,30 H85 V55 H5 Z", color:"#FFD700"}
+    ]
+  },
+  {
+    name: "Belgium",
+    level: 2,
+    outline: "vert3",
+    regions: [
+      {d:"M5,5 H31.67 V55 H5 Z", color:"#000000"},
+      {d:"M31.67,5 H58.33 V55 H31.67 Z", color:"#FAE042"},
+      {d:"M58.33,5 H85 V55 H58.33 Z", color:"#ED2939"}
+    ]
+  },
+  {
+    name: "Ireland",
+    level: 2,
+    outline: "vert3",
+    regions: [
+      {d:"M5,5 H31.67 V55 H5 Z", color:"#169B62"},
+      {d:"M31.67,5 H58.33 V55 H31.67 Z", color:"#FFFFFF"},
+      {d:"M58.33,5 H85 V55 H58.33 Z", color:"#FF883E"}
+    ]
+  },
+  {
+    name: "Sweden",
+    level: 2,
+    outline: "nordic",
+    regions: [
+      {d:"M5,5 H32 V55 H5 Z", color:"#006AA7"},
+      {d:"M32,5 H42 V55 H32 Z", color:"#FECC00"},
+      {d:"M42,5 H85 V55 H42 Z", color:"#006AA7"},
+      {d:"M5,25 H85 V35 H5 Z", color:"#FECC00"}
+    ]
+  },
+  {
+    name: "Switzerland",
+    level: 2,
+    outline: "cross",
+    regions: [
+      {d:"M5,5 H85 V55 H5 Z", color:"#FF0000"},
+      {d:"M40,15 H50 V45 H40 Z", color:"#FFFFFF"},
+      {d:"M30,25 H60 V35 H30 Z", color:"#FFFFFF"}
+    ]
+  },
+  {
+    name: "Hungary",
+    level: 2,
+    outline: "horiz3",
+    regions: [
+      {d:"M5,5 H85 V21.67 H5 Z", color:"#CE2939"},
+      {d:"M5,21.67 H85 V38.33 H5 Z", color:"#FFFFFF"},
+      {d:"M5,38.33 H85 V55 H5 Z", color:"#477050"}
+    ]
+  },
+
+  /* ===== LEVEL 3 — Hard ===== */
+  {
+    name: "Romania",
+    level: 3,
+    outline: "vert3",
+    regions: [
+      {d:"M5,5 H31.67 V55 H5 Z", color:"#002B7F"},
+      {d:"M31.67,5 H58.33 V55 H31.67 Z", color:"#FCD116"},
+      {d:"M58.33,5 H85 V55 H58.33 Z", color:"#CE1126"}
+    ]
+  },
+  {
+    name: "Austria",
+    level: 3,
+    outline: "horiz3",
+    regions: [
+      {d:"M5,5 H85 V21.67 H5 Z", color:"#ED2939"},
+      {d:"M5,21.67 H85 V38.33 H5 Z", color:"#FFFFFF"},
+      {d:"M5,38.33 H85 V55 H5 Z", color:"#ED2939"}
+    ]
+  },
+  {
+    name: "Finland",
+    level: 3,
+    outline: "nordic",
+    regions: [
+      {d:"M5,5 H32 V55 H5 Z", color:"#FFFFFF"},
+      {d:"M32,5 H42 V55 H32 Z", color:"#003580"},
+      {d:"M42,5 H85 V55 H42 Z", color:"#FFFFFF"},
+      {d:"M5,25 H85 V35 H5 Z", color:"#003580"}
+    ]
+  },
+  {
+    name: "Denmark",
+    level: 3,
+    outline: "nordic",
+    regions: [
+      {d:"M5,5 H32 V55 H5 Z", color:"#C8102E"},
+      {d:"M32,5 H42 V55 H32 Z", color:"#FFFFFF"},
+      {d:"M42,5 H85 V55 H42 Z", color:"#C8102E"},
+      {d:"M5,25 H85 V35 H5 Z", color:"#FFFFFF"}
+    ]
+  },
+  {
+    name: "Indonesia",
+    level: 3,
+    outline: "horiz2",
+    regions: [
+      {d:"M5,5 H85 V30 H5 Z", color:"#FF0000"},
+      {d:"M5,30 H85 V55 H5 Z", color:"#FFFFFF"}
+    ]
+  },
+  {
+    name: "Monaco",
+    level: 3,
+    outline: "horiz2",
+    regions: [
+      {d:"M5,5 H85 V30 H5 Z", color:"#CE1126"},
+      {d:"M5,30 H85 V55 H5 Z", color:"#FFFFFF"}
+    ]
+  }
+];
+
+/* ========== STATE ========== */
+let score = 0;
+let level = 1;
+let currentFlag = null;
+let attempts1 = 5;
+let attempts2 = 5;
+let selectedOutline = null;
+let stage1Done = false;
+let activeRegion = null;
+let filledCount = 0;
+
+/* ========== NAVIGATION ========== */
+function go(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id === 'countries') updateScoreDisplays();
+}
+
+function pickLevel(lv) {
+  level = lv;
+  const names = {1:'Easy', 2:'Medium', 3:'Hard'};
+  document.getElementById('lvTitle').textContent = 'Level ' + lv;
+  document.getElementById('lvLab').textContent = names[lv];
+  const list = document.getElementById('cList');
+  list.innerHTML = '';
+  FLAGS.filter(f => f.level === lv).forEach(f => {
+    const btn = document.createElement('button');
+    btn.className = 'country-btn';
+    btn.textContent = f.name;
+    btn.onclick = () => startCountry(f);
+    list.appendChild(btn);
+  });
+  go('countries');
+}
+
+function updateScoreDisplays() {
+  ['sc1','sc2','sc3'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = score;
+  });
+}
+
+/* ========== STAGE 1 ========== */
+function startCountry(flag) {
+  currentFlag = flag;
+  attempts1 = 5;
+  attempts2 = 5;
+  stage1Done = false;
+  selectedOutline = null;
+  filledCount = 0;
+  activeRegion = null;
+
+  document.getElementById('s1Name').textContent = flag.name;
+  document.getElementById('s2Name').textContent = flag.name;
+  document.getElementById('att1').textContent = attempts1;
+  document.getElementById('s1msg').textContent = '';
+  document.getElementById('s1msg').className = 'msg';
+  document.getElementById('s1sub').disabled = true;
+  document.getElementById('s1sub').style.display = '';
+  document.getElementById('s1next').style.display = 'none';
+
+  // Build outline options: correct + distractors
+  const allKeys = Object.keys(OUTLINES);
+  const correct = flag.outline;
+  let options = [correct];
+  // add 5-7 other distinct outlines
+  const others = allKeys.filter(k => k !== correct);
+  shuffle(others);
+  options = options.concat(others.slice(0, 5));
+  // ensure uniqueness and shuffle final
+  options = [...new Set(options)];
+  shuffle(options);
+
+  const container = document.getElementById('outlines');
+  container.innerHTML = '';
+  options.forEach((key, idx) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.key = key;
+    card.innerHTML = OUTLINES[key];
+    card.onclick = () => selectOutline(card, key);
+    container.appendChild(card);
+  });
+
+  updateScoreDisplays();
+  go('stage1');
+}
+
+function selectOutline(card, key) {
+  if (stage1Done) return;
+  document.querySelectorAll('#outlines .card').forEach(c => c.classList.remove('sel'));
+  card.classList.add('sel');
+  selectedOutline = key;
+  document.getElementById('s1sub').disabled = false;
+}
+
+function submit1() {
+  if (!selectedOutline || stage1Done) return;
+  const correct = currentFlag.outline;
+  const msg = document.getElementById('s1msg');
+
+  if (selectedOutline === correct) {
+    // success
+    const pts = Math.max(1, 6 - (6 - attempts1)); // 5 on first (attempts still 5), down to 1
+    // better: attempts start 5, first try attempts=5 → 5pts; after one fail attempts=4 → 4pts etc.
+    const tryNum = 6 - attempts1; // 1 on first submit
+    const points = Math.max(1, 6 - tryNum);
+    score += points;
+    stage1Done = true;
+    msg.textContent = `Correct! +${points} points`;
+    msg.className = 'msg success';
+    document.getElementById('s1sub').style.display = 'none';
+    document.getElementById('s1next').style.display = '';
+    // mark cards
+    document.querySelectorAll('#outlines .card').forEach(c => {
+      if (c.dataset.key === correct) c.classList.add('correct');
+      else if (c.classList.contains('sel')) c.classList.add('wrong');
+      c.style.pointerEvents = 'none';
+    });
+  } else {
+    attempts1--;
+    document.getElementById('att1').textContent = attempts1;
+    msg.textContent = `Wrong outline. ${attempts1} attempt${attempts1!==1?'s':''} left.`;
+    msg.className = 'msg error';
+    // briefly show wrong
+    const sel = document.querySelector('#outlines .card.sel');
+    if (sel) {
+      sel.classList.add('wrong');
+      setTimeout(() => sel.classList.remove('wrong','sel'), 600);
+    }
+    selectedOutline = null;
+    document.getElementById('s1sub').disabled = true;
+
+    if (attempts1 <= 0) {
+      document.getElementById('goMsg').textContent = `Out of attempts identifying the outline of ${currentFlag.name}.`;
+      document.getElementById('goScore').textContent = score;
+      go('gameover');
+    }
+  }
+  updateScoreDisplays();
+}
+
+function goStage2() {
+  // build preview SVG with regions
+  const preview = document.getElementById('preview');
+  let svg = `<svg viewBox="0 0 90 60" xmlns="http://www.w3.org/2000/svg">`;
+  currentFlag.regions.forEach((r, i) => {
+    svg += `<path class="rg" id="reg${i}" d="${r.d}" data-correct="${r.color.toUpperCase()}" data-idx="${i}"/>`;
+  });
+  svg += `</svg>`;
+  preview.innerHTML = svg;
+
+  // attach click handlers
+  preview.querySelectorAll('.rg').forEach(path => {
+    path.addEventListener('click', () => selectRegion(path));
+  });
+
+  // build color board
+  const board = document.getElementById('colors');
+  board.innerHTML = '';
+  // unique colors needed + a few extras
+  const needed = [...new Set(currentFlag.regions.map(r => r.color.toUpperCase()))];
+  const palette = [...needed];
+  // add distractors
+  const extras = COLORS.map(c => c.hex.toUpperCase()).filter(h => !needed.includes(h));
+  shuffle(extras);
+  palette.push(...extras.slice(0, Math.max(3, 8 - needed.length)));
+  shuffle(palette);
+
+  palette.forEach(hex => {
+    const sw = document.createElement('div');
+    sw.className = 'swatch';
+    sw.style.background = hex;
+    sw.dataset.hex = hex;
+    sw.title = hex;
+    sw.onclick = () => applyColor(hex);
+    board.appendChild(sw);
+  });
+  board.style.display = 'none';
+
+  document.getElementById('att2').textContent = attempts2;
+  document.getElementById('s2msg').textContent = '';
+  document.getElementById('s2msg').className = 'msg';
+  document.getElementById('s2check').disabled = true;
+  document.getElementById('s2check').style.display = '';
+  document.getElementById('s2next').style.display = 'none';
+  document.getElementById('s2inst').textContent = 'Tap a region, then choose its color from the palette below';
+
+  filledCount = 0;
+  activeRegion = null;
+  updateScoreDisplays();
+  go('stage2');
+}
+
+/* ========== STAGE 2 ========== */
+function selectRegion(path) {
+  if (path.classList.contains('filled') && path.getAttribute('fill') && path.getAttribute('fill') !== 'transparent') {
+    // allow re-coloring
+  }
+  document.querySelectorAll('.rg').forEach(p => p.classList.remove('active'));
+  path.classList.add('active');
+  activeRegion = path;
+  document.getElementById('colors').style.display = 'grid';
+  document.getElementById('s2inst').textContent = 'Now pick a color for the selected region';
+}
+
+function applyColor(hex) {
+  if (!activeRegion) return;
+  activeRegion.setAttribute('fill', hex);
+  activeRegion.classList.add('filled');
+  activeRegion.classList.remove('active');
+  activeRegion = null;
+  document.getElementById('colors').style.display = 'none';
+  document.getElementById('s2inst').textContent = 'Tap another region or press Submit when finished';
+
+  // count filled
+  const all = document.querySelectorAll('.rg');
+  filledCount = [...all].filter(p => p.getAttribute('fill') && p.getAttribute('fill') !== 'transparent').length;
+  document.getElementById('s2check').disabled = filledCount < all.length;
+}
+
+function checkColors() {
+  const regions = document.querySelectorAll('.rg');
+  let allCorrect = true;
+  regions.forEach(p => {
+    const got = (p.getAttribute('fill') || '').toUpperCase();
+    const need = (p.dataset.correct || '').toUpperCase();
+    // allow close matches for some colors (optional, keep strict for now)
+    if (got !== need) {
+      // normalize a few known variants
+      const norm = (c) => {
+        if (c === '#FFFFFF' || c === '#FFF') return '#FFFFFF';
+        if (c === '#000000' || c === '#000') return '#000000';
+        return c;
+      };
+      if (norm(got) !== norm(need)) allCorrect = false;
+    }
+  });
+
+  const msg = document.getElementById('s2msg');
+  if (allCorrect) {
+    // success points
+    const tryNum = 6 - attempts2;
+    const points = Math.max(1, 6 - tryNum);
+    score += points;
+    msg.textContent = `Perfect coloring! +${points} points`;
+    msg.className = 'msg success';
+    document.getElementById('s2check').style.display = 'none';
+    document.getElementById('s2next').style.display = '';
+    // lock
+    regions.forEach(p => p.style.pointerEvents = 'none');
+  } else {
+    attempts2--;
+    document.getElementById('att2').textContent = attempts2;
+    msg.textContent = `Some colors are wrong. ${attempts2} attempt${attempts2!==1?'s':''} left.`;
+    msg.className = 'msg error';
+    // reset fills so player can try again
+    regions.forEach(p => {
+      p.setAttribute('fill', 'transparent');
+      p.classList.remove('filled','active');
+    });
+    filledCount = 0;
+    document.getElementById('s2check').disabled = true;
+    document.getElementById('colors').style.display = 'none';
+    document.getElementById('s2inst').textContent = 'Tap a region, then choose its color from the palette below';
+
+    if (attempts2 <= 0) {
+      document.getElementById('goMsg').textContent = `Out of attempts coloring the flag of ${currentFlag.name}.`;
+      document.getElementById('goScore').textContent = score;
+      go('gameover');
+    }
+  }
+  updateScoreDisplays();
+}
+
+function showResult() {
+  document.getElementById('resTitle').textContent = currentFlag.name + ' Complete!';
+  document.getElementById('resDetail').textContent = `You successfully identified and colored the flag.`;
+  document.getElementById('resScore').textContent = score;
+  go('result');
+}
+
+function again() {
+  // stay on same level, go back to country list
+  pickLevel(level);
+}
+
+/* ========== HELPERS ========== */
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// initial
+updateScoreDisplays();
+</script>
+</body>
+</html>
